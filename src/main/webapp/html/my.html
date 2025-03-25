@@ -24,18 +24,28 @@
 </table>
 
 <div id="pagination">
-    <!-- Forward/Backward buttons -->
-    <button id="prevPage">&larr;</button>  <!-- ← -->
-    <button id="nextPage">&rarr;</button>  <!-- → -->
-    <span id="pageInfo"> 1 </span>
-
     <!-- Drop-down list for selecting the number of rows -->
-    <select id="pageSize">
-        <option value="3">3</option>
-        <option value="5" selected>5</option>
-        <option value="10">10</option>
-        <option value="20">20</option>
-    </select>
+    <div class="pagination-row">
+        <label for="pageSize" style="margin-right: 5px;">Count of rows:</label>
+        <select id="pageSize">
+            <option value="3">3</option>
+            <option value="5" selected>5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+        </select>
+    </div>
+
+    <!-- Page information -->
+    <div class="pagination-row nav-row">
+        <span id="pageInfo"> 1 </span>
+    </div>
+
+    <!-- Forward/Backward buttons -->
+    <div class="pagination-row nav-row">
+        <button id="prevPage">&larr;</button>  <!-- ← -->
+        <div id="pageNumbers"></div>
+        <button id="nextPage">&rarr;</button>  <!-- → -->
+    </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -57,7 +67,7 @@
     // Launching when the page loads
     document.addEventListener('DOMContentLoaded', fetchTotalPlayers);
 
-    $(document).ready(function() {
+    $(document).ready(function () {
         loadPlayers();
     });
 
@@ -87,8 +97,29 @@
                 updatePagination();
             });
     }
+
     function updatePagination() {
         const totalPages = Math.ceil(totalPlayers / pageSize);
+        const pageNumbers = document.getElementById('pageNumbers');
+        pageNumbers.innerHTML = ''; // Clearing previous numbers
+
+        // Adding buttons for each page
+        for (let i = 0; i < totalPages; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = 'page-number';
+            pageBtn.textContent = i + 1;
+
+            // Highlighting the current page
+            if (i === currentPage) {
+                pageBtn.classList.add('active');
+            }
+            pageBtn.addEventListener('click', () => {
+                loadPlayers(i); // Loading the selected page
+            });
+            pageNumbers.appendChild(pageBtn);
+        }
+
+        // Updating information about the page
         document.getElementById('pageInfo').textContent =
             `Page ${currentPage + 1} of ${totalPages}`;
 
