@@ -7,5 +7,111 @@
 <body>
 <h1>RPG admin panel</h1>
 
+<table id="playersTable">
+    <thead>
+    <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Title</th>
+        <th>Race</th>
+        <th>Profession</th>
+        <th>Level</th>
+        <th>Birthday</th>
+        <th>Banned</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<div id="pagination">
+    <!-- Forward/Backward buttons -->
+    <button id="prevPage">&larr;</button>  <!-- ← -->
+    <button id="nextPage">&rarr;</button>  <!-- → -->
+    <span id="pageInfo"> 1 </span>
+
+    <!-- Drop-down list for selecting the number of rows -->
+    <select id="pageSize">
+        <option value="3">3</option>
+        <option value="5" selected>5</option>
+        <option value="10">10</option>
+        <option value="20">20</option>
+    </select>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    let currentPage = 0;
+    let totalPlayers = 0;
+    let pageSize = 5; // Default value
+
+    // A function for requesting the total number of players
+    function fetchTotalPlayers() {
+        fetch('/rest/players/count')
+            .then(response => response.json())
+            .then(count => {
+                totalPlayers = count;
+                updatePagination();
+            });
+    }
+
+    // Launching when the page loads
+    document.addEventListener('DOMContentLoaded', fetchTotalPlayers);
+
+    $(document).ready(function() {
+        loadPlayers();
+    });
+
+    function loadPlayers(page = 0, size = pageSize) {
+        fetch(`/rest/players?pageNumber=${page}&pageSize=${size}`)
+            .then(response => response.json())
+            .then(players => {
+                const tbody = document.querySelector('#playersTable tbody');
+                tbody.innerHTML = '';
+
+                players.forEach(player => {
+                    tbody.innerHTML += `
+                    <tr>
+                        <td>${player.id}</td>
+                        <td>${player.name}</td>
+                        <td>${player.title}</td>
+                        <td>${player.race}</td>
+                        <td>${player.profession}</td>
+                        <td>${player.level}</td>
+                        <td>${new Date(player.birthday).toLocaleDateString()}</td>
+                        <td>${player.banned ? 'Yes' : 'No'}</td>
+                    </tr>
+                `;
+                });
+
+                currentPage = page;
+                updatePagination();
+            });
+    }
+    function updatePagination() {
+        const totalPages = Math.ceil(totalPlayers / pageSize);
+        document.getElementById('pageInfo').textContent =
+            `Page ${currentPage + 1} of ${totalPages}`;
+
+        // Block the buttons if the page is the last one
+        document.getElementById('prevPage').disabled = currentPage === 0;
+        document.getElementById('nextPage').disabled = currentPage >= totalPages - 1;
+    }
+
+    // Forward/Backward buttons
+    document.getElementById('prevPage').addEventListener('click', () => {
+        if (currentPage > 0) loadPlayers(currentPage - 1);
+    });
+
+    document.getElementById('nextPage').addEventListener('click', () => {
+        loadPlayers(currentPage + 1);
+    });
+
+    // Changing the number of elements on a page
+    document.getElementById('pageSize').addEventListener('change', (e) => {
+        pageSize = parseInt(e.target.value);
+        loadPlayers(0); // Reset to the first page
+    });
+</script>
+
 </body>
 </html>

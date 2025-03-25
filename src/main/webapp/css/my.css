@@ -1,0 +1,27 @@
+#playersTable {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+}
+#playersTable th, #playersTable td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+#playersTable th {
+    background-color: #f2f2f2;
+}
+
+#pagination {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+#pagination button {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+#pageInfo {
+    font-weight: bold;
+}
