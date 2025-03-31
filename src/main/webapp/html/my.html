@@ -50,6 +50,69 @@
     </div>
 </div>
 
+<hr>
+<!-- A form for creating a new player -->
+<div id="create-player">
+    <h2>Create New Player</h2>
+    <table class="form-table">
+        <tr>
+            <td class="label-cell"><label for="new-name">Name (1-12 chars):</label></td>
+            <td><input type="text" id="new-name" maxlength="12" required></td>
+        </tr>
+        <tr>
+            <td class="label-cell"><label for="new-title">Title (1-30 chars):</label></td>
+            <td><input type="text" id="new-title" maxlength="30" required></td>
+        </tr>
+        <tr>
+            <td class="label-cell"><label for="new-race">Race:</label></td>
+            <td>
+                <select id="new-race" required>
+                    <option value="">Select race</option>
+                    <option value="HUMAN">HUMAN</option>
+                    <option value="DWARF">DWARF</option>
+                    <option value="ELF">ELF</option>
+                    <option value="GIANT">GIANT</option>
+                    <option value="ORC">ORC</option>
+                    <option value="TROLL">TROLL</option>
+                    <option value="HOBBIT">HOBBIT</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td class="label-cell"><label for="new-profession">Profession:</label></td>
+            <td>
+                <select id="new-profession" required>
+                    <option value="">Select profession</option>
+                    <option value="WARRIOR">WARRIOR</option>
+                    <option value="ROGUE">ROGUE</option>
+                    <option value="SORCERER">SORCERER</option>
+                    <option value="CLERIC">CLERIC</option>
+                    <option value="PALADIN">PALADIN</option>
+                    <option value="NAZGUL">NAZGUL</option>
+                    <option value="WARLOCK">WARLOCK</option>
+                    <option value="DRUID">DRUID</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td class="label-cell"><label for="new-level">Level (0-100):</label></td>
+            <td><input type="number" id="new-level" min="0" max="100" value="1" required></td>
+        </tr>
+        <tr>
+            <td class="label-cell"><label for="new-birthday">Birthday:</label></td>
+            <td><input type="date" id="new-birthday" required></td>
+        </tr>
+        <tr>
+            <td class="label-cell"><label for="new-banned">Banned:</label></td>
+            <td><input type="checkbox" id="new-banned"></td>
+        </tr>
+    </table>
+
+    <div class="button-container">
+        <button id="create-button" class="submit-btn">Create Player</button>
+    </div>
+</div>
+
 <script>
     let currentPage = 0;
     let totalPlayers = 0;
@@ -57,11 +120,12 @@
 
     // A function for requesting the total number of players
     function fetchTotalPlayers() {
-        fetch('/rest/players/count')
+        return fetch('/rest/players/count')
             .then(response => response.json())
             .then(count => {
                 totalPlayers = count;
                 updatePagination();
+                return count;
             });
     }
 
@@ -74,7 +138,10 @@
 
     function loadPlayers(page = 0, size = pageSize) {
         fetch(`/rest/players?pageNumber=${page}&pageSize=${size}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error('Network error');
+                return response.json();
+            })
             .then(players => {
                 const tbody = document.querySelector('#playersTable tbody');
                 tbody.innerHTML = '';
@@ -104,6 +171,10 @@
 
                 currentPage = page;
                 updatePagination();
+            })
+            .catch(error => {
+                console.error('Load error:', error);
+                alert('Failed to load players');
             });
     }
 
@@ -178,7 +249,7 @@
             })
                 .then(response => {
                     if (response.ok) {
-                        loadPlayers(currentPage); // Обновляем таблицу после удаления
+                        loadPlayers(currentPage); // Update the table after deletion
                     } else {
                         alert("Error deleting player!");
                     }
@@ -187,7 +258,7 @@
     }
 
     function savePlayer(playerId) {
-        const row = $('#playersTable tbody tr').filter(function() {
+        const row = $('#playersTable tbody tr').filter(function () {
             return $(this).find('td:first').text().trim() == playerId;
         });
 
@@ -268,6 +339,100 @@
         pageSize = parseInt(e.target.value);
         loadPlayers(0); // Reset to the first page
     });
+
+    document.getElementById('create-button').addEventListener('click', createPlayer);
+
+    function createPlayer() {
+        // Get values from the form
+        const playerData = {
+            name: document.getElementById('new-name').value.trim(),
+            title: document.getElementById('new-title').value.trim(),
+            race: document.getElementById('new-race').value,
+            profession: document.getElementById('new-profession').value,
+            level: parseInt(document.getElementById('new-level').value),
+            birthday: new Date(document.getElementById('new-birthday').value).getTime(),
+            banned: document.getElementById('new-banned').checked
+        };
+
+        // Validation
+        if (!validatePlayerData(playerData)) {
+            return;
+        }
+
+        // Send to the server
+        fetch('/rest/players', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(playerData)
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Server error');
+                return response.json();
+            })
+            .then(() => {
+                // Successful creation
+                alert('Player created successfully!');
+                clearForm();
+
+                // Update the total number
+                fetchTotalPlayers().then(() => {
+                    // Recalculate the current page
+                    const newTotalPages = Math.ceil(totalPlayers / pageSize);
+                    currentPage = Math.min(currentPage, newTotalPages - 1);
+                    // Update the table
+                    loadPlayers(currentPage);
+                });
+            })
+            .catch(error => {
+                alert('Error creating player: ' + error.message);
+            });
+    }
+
+    function validatePlayerData(data) {
+        if (!data.name || data.name.length > 12) {
+            alert('Name must be 1-12 characters long');
+            return false;
+        }
+
+        if (!data.title || data.title.length > 30) {
+            alert('Title must be 1-30 characters long');
+            return false;
+        }
+
+        if (!data.race) {
+            alert('Please select race');
+            return false;
+        }
+
+        if (!data.profession) {
+            alert('Please select profession');
+            return false;
+        }
+
+        if (isNaN(data.level) || data.level < 0 || data.level > 100) {
+            alert('Level must be between 0 and 100');
+            return false;
+        }
+
+        if (isNaN(data.birthday)) {
+            alert('Please select valid birthday');
+            return false;
+        }
+
+        return true;
+    }
+
+    function clearForm() {
+        document.getElementById('new-name').value = '';
+        document.getElementById('new-title').value = '';
+        document.getElementById('new-race').value = '';
+        document.getElementById('new-profession').value = '';
+        document.getElementById('new-level').value = '1';
+        document.getElementById('new-birthday').value = '';
+        document.getElementById('new-banned').checked = false;
+    }
 </script>
 
 </body>
