@@ -18,6 +18,8 @@
         <th>Level</th>
         <th>Birthday</th>
         <th>Banned</th>
+        <th>Edit</th>
+        <th>Delete</th>
     </tr>
     </thead>
     <tbody></tbody>
@@ -48,7 +50,6 @@
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     let currentPage = 0;
     let totalPlayers = 0;
@@ -89,12 +90,137 @@
                         <td>${player.level}</td>
                         <td>${new Date(player.birthday).toLocaleDateString()}</td>
                         <td>${player.banned ? 'Yes' : 'No'}</td>
+                        <td>
+                            <img src="../img/edit.png" alt="Edit" class="action-icon"
+                                onclick="editPlayer(${player.id})">
+                        </td>
+                        <td>
+                            <img src="../img/delete.png" alt="Delete" class="action-icon"
+                                onclick="deletePlayer(${player.id})">
+                        </td>
                     </tr>
                 `;
                 });
 
                 currentPage = page;
                 updatePagination();
+            });
+    }
+
+    let currentlyEditing = null; // Store the ID of the player being edited
+
+    function editPlayer(playerId) {
+        console.log("Editing player:", playerId);
+
+        // If already editing another player, save it first
+        if (currentlyEditing && currentlyEditing !== playerId) {
+            savePlayer(currentlyEditing);
+        }
+
+
+        const row = $('#playersTable tbody tr').filter(function () {
+            return $(this).find('td:first').text().trim() == playerId;
+        });
+
+        if (row.length === 0) {
+            console.error("Row not found for player:", playerId);
+            return;
+        }
+
+        currentlyEditing = playerId;
+
+        const rowElement = row[0];
+
+        // Make cells editable
+        const cells = row.cells;
+        makeEditable(rowElement.cells[1]); // Name
+        makeEditable(rowElement.cells[2]); // Title
+        makeSelect(rowElement.cells[3], ['HUMAN', 'DWARF', 'ELF', 'GIANT', 'ORC', 'TROLL', 'HOBBIT']);
+        makeSelect(rowElement.cells[4], ['WARRIOR', 'ROGUE', 'SORCERER', 'CLERIC', 'PALADIN', 'NAZGUL', 'WARLOCK', 'DRUID']);
+        makeCheckbox(rowElement.cells[7]); // Banned
+
+        // Change the edit icon to the save icon
+        const editIcon = row.find('td:nth-child(9) img');
+        editIcon.attr('src', '/img/save.png');
+        editIcon.attr('onclick', `savePlayer(${playerId})`);
+
+        // Hide the deletion icon
+        row.find('td:nth-child(10)').css('visibility', 'hidden');
+
+        // Add a class for highlighting
+        row.addClass('editing');
+    }
+
+    function makeEditable(cell) {
+        const value = cell.textContent;
+        cell.innerHTML = `<input type="text" value="${value}" style="width:100%">`;
+    }
+
+    function makeSelect(cell, options) {
+        const value = cell.textContent;
+        let select = `<select style="width:100%">`;
+        options.forEach(opt => {
+            select += `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`;
+        });
+        select += `</select>`;
+        cell.innerHTML = select;
+    }
+
+    function makeCheckbox(cell) {
+        const isBanned = cell.textContent.trim() === 'Yes';
+        cell.innerHTML = `<input type="checkbox" ${isBanned ? 'checked' : ''}>`;
+    }
+
+    function deletePlayer(playerId) {
+        if (confirm("Are you sure you want to delete this player?")) {
+            fetch(`/rest/players/${playerId}`, {
+                method: 'DELETE'
+            })
+                .then(response => {
+                    if (response.ok) {
+                        loadPlayers(currentPage); // Обновляем таблицу после удаления
+                    } else {
+                        alert("Error deleting player!");
+                    }
+                });
+        }
+    }
+
+    function savePlayer(playerId) {
+        const row = $('#playersTable tbody tr').filter(function() {
+            return $(this).find('td:first').text().trim() == playerId;
+        });
+
+        if (row.length === 0) return;
+
+        const cells = row[0].cells;
+
+        const updatedData = {
+            name: cells[1].querySelector('input').value,
+            title: cells[2].querySelector('input').value,
+            race: cells[3].querySelector('select').value,
+            profession: cells[4].querySelector('select').value,
+            banned: cells[7].querySelector('input').checked
+        };
+
+        fetch(`/rest/players/${playerId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updatedData)
+        })
+            .then(response => {
+                if (response.ok) {
+                    currentlyEditing = null;
+                    loadPlayers(currentPage); // Update the table
+                } else {
+                    throw new Error('Update failed');
+                }
+            })
+            .catch(error => {
+                alert('Error saving changes: ' + error.message);
+                loadPlayers(currentPage); // Restore the original data
             });
     }
 
